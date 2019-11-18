@@ -5,6 +5,11 @@
 #include <iostream>
 #include <string>
 
+struct DataPackage
+{
+	int age;
+	char name[32];
+};
 
 int main()
 {
@@ -63,7 +68,11 @@ int main()
 		//	6 接受服务器信息 ——recv
 		int nlen = recv(_sock, recvBuf, 256, 0);
 		if (nlen > 0)
-			std::cout << recvBuf << std::endl;
+		{
+			DataPackage *dp = (DataPackage*)(recvBuf);
+			std::cout << "age: " << dp->age << std::endl;
+			std::cout << "Name: " << dp->name << std::endl;
+		}
 	}
 
 	//	7 关闭socket ——closesocket
