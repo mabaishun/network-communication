@@ -18,6 +18,7 @@ enum CMD
 	CMD_LOGIN_RESULT,
 	CMD_LOGOUT,
 	CMD_LOGOUT_RESULT,
+	CMD_NEW_USER_JOIN,
 	CMD_ERROR
 };
 
@@ -62,6 +63,17 @@ struct LogOutResult: public DataHeader
 	LogOutResult() :result(0){
 		dataLength = sizeof(LogOutResult);
 		cmd = CMD_LOGOUT_RESULT;
+	}
+	int result;
+};
+
+
+struct NewUser : public DataHeader
+{
+	NewUser() {
+		dataLength = sizeof(DataHeader);
+		cmd = CMD_NEW_USER_JOIN;
+		result = 0;
 	}
 	int result;
 };
@@ -119,6 +131,7 @@ int processor(SOCKET accsock)
 
 int main()
 {
+
 	//启动windows socket 2.x 环境
 	WORD ver = MAKEWORD(2, 2);
 	WSADATA dat;
@@ -192,6 +205,7 @@ int main()
 
 		if (FD_ISSET(_sock, &fdread))
 		{
+			NewUser use;
 			FD_CLR(_sock,&fdread);
 			accsock = accept(_sock, (sockaddr*)&_clientAddr, &len);
 			if (INVALID_SOCKET == accsock)
@@ -199,8 +213,14 @@ int main()
 				std::cout << "建立连接失败" << std::endl;
 				exit(1);
 			}
-			std::cout << "新客户端加入，IP = " << inet_ntoa(_clientAddr.sin_addr) << std::endl;
-			g_clients.push_back(accsock);
+			else {
+				for (int i = 0; i < g_clients.size(); i++)
+				{
+					send(g_clients[i], (const char*)&use, sizeof(NewUser), 0);
+				}
+				std::cout << "新客户端加入，IP = " << inet_ntoa(_clientAddr.sin_addr) << std::endl;
+				g_clients.push_back(accsock);
+			}
 		}
 
 		for (size_t i = 0; i < fdread.fd_count; i++)
