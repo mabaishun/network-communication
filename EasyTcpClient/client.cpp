@@ -5,11 +5,61 @@
 #include <iostream>
 #include <string>
 
-struct DataPackage
+enum CMD
 {
-	int age;
-	char name[32];
+	CMD_LOGIN,
+	CMD_LOGIN_RESULT,
+	CMD_LOGOUT,
+	CMD_LOGOUT_RESULT,
+	CMD_ERROR
 };
+
+
+//消息头
+struct DataHeader
+{
+	short dataLength;	//数据长度
+	short cmd;			//命令
+};
+//消息体
+struct Login :public DataHeader
+{
+	Login() {
+		dataLength = sizeof(Login);
+		cmd = CMD_LOGIN;
+	}
+	char userName[32];
+	char passWord[32];
+};
+//数据是否发送成功
+struct LoginResult : public DataHeader
+{
+	LoginResult() :result(0) {
+		dataLength = sizeof(LoginResult);
+		cmd = CMD_LOGIN_RESULT;
+	}
+	int result;
+};
+//登出
+struct LogOut : public DataHeader
+{
+	LogOut() {
+		dataLength = sizeof(LogOut);
+		cmd = CMD_LOGOUT;
+	}
+	char userName[32];
+};
+//登出结果
+struct LogOutResult : public DataHeader
+{
+	LogOutResult() :result(0) {
+		dataLength = sizeof(LogOutResult);
+		cmd = CMD_LOGOUT_RESULT;
+	}
+	int result;
+};
+
+
 
 int main()
 {
@@ -55,24 +105,41 @@ int main()
 		fflush(stdin);
 		scanf("%s", _cmdBuf);
 		_cmdBuf[strlen(_cmdBuf)] = '\0';
+		std::cout << "_cmdBuf:" << _cmdBuf << std::endl;
 		//4 处理请求
 		if (0 == strcmp(_cmdBuf,"exit"))
 		{
 			break;
 		}
-		else
+		else if(0 == strcmp(_cmdBuf,"login"))
 		{
 			//5 向服务器发送请求指令
-			send(_sock, _cmdBuf, strlen(_cmdBuf), 0);
+			Login login{  };
+			strcpy(login.userName, "admin");
+			strcpy(login.passWord, "12345");
+			send(_sock, (const char*)&login, sizeof(Login), 0);
+			//接受服务器返回的数据
+			LoginResult logres{ };
+			recv(_sock, (char*)&logres, sizeof(LoginResult), 0);
+			std::cout << "LoginResult: " << logres.result << std::endl;
+
 		}
-		//	6 接受服务器信息 ——recv
-		int nlen = recv(_sock, recvBuf, 256, 0);
-		if (nlen > 0)
+		else if (0 == strcmp(_cmdBuf, "logout"))
 		{
-			DataPackage *dp = (DataPackage*)(recvBuf);
-			std::cout << "age: " << dp->age << std::endl;
-			std::cout << "Name: " << dp->name << std::endl;
+			LogOut logout{ };
+			strcpy(logout.userName, "admin");
+			send(_sock, (const char*)&logout, sizeof(LogOut), 0);
+			
+			DataHeader header{};
+			LogOutResult  logres{};
+			recv(_sock, (char*)&logres, sizeof(LogOutResult), 0);
+			std::cout << "LogOutResult: " << logres.result << std::endl;
 		}
+		else
+		{
+			std::cout << "不支持的命令" << std::endl;
+		}
+
 	}
 
 	//	7 关闭socket ——closesocket
