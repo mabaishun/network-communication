@@ -4,6 +4,7 @@
 #include <iostream>
 #include <iostream>
 #include <string>
+#include <thread>
 
 enum CMD
 {
@@ -69,6 +70,9 @@ struct NewUser : public DataHeader
 	int result;
 };
 
+bool g_bExit = false;
+
+
 int processor(SOCKET _sock)
 {
 	char msgbuf[128]{};
@@ -81,8 +85,8 @@ int processor(SOCKET _sock)
 		<< "长度:" << dh.dataLength << std::endl;
 	if (nlen <= 0)
 	{
+		g_bExit = true;
 		std::cout << "与服务器断开连接，任务结束" << std::endl;
-		return -1;
 	}
 	switch (dh.cmd)
 	{
@@ -113,9 +117,38 @@ int processor(SOCKET _sock)
 		default:
 			std::cout << "default " << std::endl;
 	}
-		return 1;
 }
-
+void cmdThread(SOCKET _sock)
+{
+	std::string cmd;
+	while (std::cin >> cmd)
+	{
+		if (cmd == "exit")
+		{
+			std::cout << "线程退出" << std::endl;
+			exit(1);
+		}
+		else if (cmd == "login")
+		{
+			Login login{  };
+			strcpy(login.userName, "admin");
+			strcpy(login.passWord, "12345");
+			send(_sock, (const char*)&login, sizeof(Login), 0);
+			//Sleep(500);
+		}
+		else if (cmd == "logout")
+		{
+			LogOut logout{  };
+			strcpy(logout.userName, "admin");
+			send(_sock, (const char*)&logout, sizeof(LogOut), 0);
+			//Sleep(500);
+		}
+		else
+		{
+			std::cout << "不支持的命令" << std::endl;
+		}
+	}
+}
 
 int main()
 {
@@ -154,9 +187,10 @@ int main()
 		std::cout << "连接服务器成功" << std::endl;
 	}
 	FD_SET fdreads;
-
-
-	while (true)
+	//启动线程
+	std::thread td(cmdThread,_sock);
+	td.detach();
+	while (!g_bExit)
 	{
 		FD_ZERO(&fdreads);
 		FD_SET(_sock, &fdreads);
@@ -178,49 +212,6 @@ int main()
 				break;
 			}
 		}
-
-		////4 处理请求
-		//if (0 == strcmp(_cmdBuf,"exit"))
-		//{
-		//	break;
-		//}
-		//else if(0 == strcmp(_cmdBuf,"login"))
-		//{
-		//	//5 向服务器发送请求指令
-		//	Login login{  };
-		//	strcpy(login.userName, "admin");
-		//	strcpy(login.passWord, "12345");
-		//	send(_sock, (const char*)&login, sizeof(Login), 0);
-		//	//接受服务器返回的数据
-		//	LoginResult logres{ };
-		//	recv(_sock, (char*)&logres, sizeof(LoginResult), 0);
-		//	std::cout << "LoginResult: " << logres.result << std::endl;
-
-		//}
-		//else if (0 == strcmp(_cmdBuf, "logout"))
-		//{
-		//	LogOut logout{ };
-		//	strcpy(logout.userName, "admin");
-		//	send(_sock, (const char*)&logout, sizeof(LogOut), 0);
-		//	
-		//	DataHeader header{};
-		//	LogOutResult  logres{};
-		//	recv(_sock, (char*)&logres, sizeof(LogOutResult), 0);
-		//	std::cout << "LogOutResult: " << logres.result << std::endl;
-		//}
-		//else
-		//{
-		//	std::cout << "不支持的命令" << std::endl;
-		//}
-
-		Login login{  };
-		strcpy(login.userName, "admin");
-		strcpy(login.passWord, "12345");
-		send(_sock, (const char*)&login, sizeof(Login), 0);
-		Sleep(500);
-
-		std::cout << "空闲时间处理其他业务" << std::endl;
-
 	}
 
 	//	7 关闭socket ——closesocket
