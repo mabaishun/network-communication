@@ -220,7 +220,7 @@ int main()
 		FD_ZERO(&fdreads);
 		FD_SET(_sock, &fdreads);
 		timeval t{ 1,0 };
-		int ret = select(_sock, &fdreads, nullptr, nullptr, &t);
+		int ret = select(_sock + 1, &fdreads, nullptr, nullptr, &t);
 
 		if (ret < 0)
 		{
