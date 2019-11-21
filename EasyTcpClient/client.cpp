@@ -1,10 +1,27 @@
-#define WIN32_LEAN_AND_MEAN
+ï»¿#define WIN32_LEAN_AND_MEAN
+#ifdef _WIN32
 #include <windows.h>
 #include <WinSock2.h>
+#else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <cstring>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#define SOCKET int
+#define INVALID_SOCKET SOCKET(~0)
+#define SOCKET_ERROR    (-1)
+#endif
 #include <iostream>
 #include <iostream>
 #include <string>
 #include <thread>
+
 
 enum CMD
 {
@@ -16,14 +33,13 @@ enum CMD
 	CMD_ERROR
 };
 
-
-//ÏûÏ¢Í·
+//æ¶ˆæ¯å¤´
 struct DataHeader
 {
-	short dataLength;	//Êı¾İ³¤¶È
-	short cmd;			//ÃüÁî
+	short dataLength;	//æ•°æ®é•¿åº¦
+	short cmd;			//å‘½ä»¤
 };
-//ÏûÏ¢Ìå
+//æ¶ˆæ¯ä½“
 struct Login :public DataHeader
 {
 	Login() {
@@ -33,7 +49,7 @@ struct Login :public DataHeader
 	char userName[32];
 	char passWord[32];
 };
-//Êı¾İÊÇ·ñ·¢ËÍ³É¹¦
+//æ•°æ®æ˜¯å¦å‘é€æˆåŠŸ
 struct LoginResult : public DataHeader
 {
 	LoginResult() :result(0) {
@@ -42,7 +58,7 @@ struct LoginResult : public DataHeader
 	}
 	int result;
 };
-//µÇ³ö
+//ç™»å‡º
 struct LogOut : public DataHeader
 {
 	LogOut() {
@@ -51,7 +67,7 @@ struct LogOut : public DataHeader
 	}
 	char userName[32];
 };
-//µÇ³ö½á¹û
+//ç™»å‡ºç»“æœ
 struct LogOutResult : public DataHeader
 {
 	LogOutResult() :result(0) {
@@ -79,44 +95,45 @@ int processor(SOCKET _sock)
 	DataHeader dh{};
 	int leng = sizeof(DataHeader);
 	memset(&dh, 0, sizeof(DataHeader));
-	//5 ½ÓÊÜ¿Í»§¶ËµÄÇëÇó
+	//5 æ¥å—å®¢æˆ·ç«¯çš„è¯·æ±‚
 	int nlen = recv(_sock, (char*)&dh, sizeof(DataHeader), 0);
-	std::cout << "debug:½ÓÊÜµ½µÄÖ¸Áî: " << dh.cmd
-		<< "³¤¶È:" << dh.dataLength << std::endl;
+	std::cout << "debug:æ¥å—åˆ°çš„æŒ‡ä»¤: " << dh.cmd
+		<< "é•¿åº¦:" << dh.dataLength << std::endl;
 	if (nlen <= 0)
 	{
 		g_bExit = true;
-		std::cout << "Óë·şÎñÆ÷¶Ï¿ªÁ¬½Ó£¬ÈÎÎñ½áÊø" << std::endl;
+		std::cout << "ä¸æœåŠ¡å™¨æ–­å¼€è¿æ¥ï¼Œä»»åŠ¡ç»“æŸ" << std::endl;
 	}
 	switch (dh.cmd)
 	{
-		case CMD_LOGIN_RESULT:
-		{
-			recv(_sock, msgbuf, dh.dataLength - sizeof(DataHeader),0);
-			LoginResult *ret = (LoginResult*)msgbuf;
-			std::cout << "ÊÕµ½¿Í»§¶ËÏûÏ¢£ºCMD_LOGIN_RESULT£ºÊı¾İ³¤¶È" << ret->dataLength << std::endl;
+	case CMD_LOGIN_RESULT:
+	{
+		recv(_sock, msgbuf, dh.dataLength - sizeof(DataHeader), 0);
+		LoginResult *ret = (LoginResult*)msgbuf;
+		std::cout << "æ”¶åˆ°å®¢æˆ·ç«¯æ¶ˆæ¯ï¼šCMD_LOGIN_RESULTï¼šæ•°æ®é•¿åº¦" << ret->dataLength << std::endl;
 
-		}
-		break;
-		case CMD_LOGOUT_RESULT:
-		{
-			recv(_sock, msgbuf, dh.dataLength - sizeof(DataHeader), 0);
-			LogOutResult *ret = (LogOutResult*)msgbuf;
-			std::cout << "ÊÕµ½¿Í»§¶ËÏûÏ¢£ºCMD_LOGOUT_RESULT£ºÊı¾İ³¤¶È" << ret->dataLength << std::endl;
-
-		}
-		break;
-		case CMD_NEW_USER_JOIN:
-		{
-			recv(_sock, msgbuf, dh.dataLength - sizeof(DataHeader), 0);
-			NewUser *ret = (NewUser*)msgbuf;
-			std::cout << "ÊÕµ½¿Í»§¶ËÏûÏ¢£ºCMD_NEW_USER_JOIN£ºÊı¾İ³¤¶È" << ret->dataLength << std::endl;
-
-		}
-		break;
-		default:
-			std::cout << "default " << std::endl;
 	}
+	break;
+	case CMD_LOGOUT_RESULT:
+	{
+		recv(_sock, msgbuf, dh.dataLength - sizeof(DataHeader), 0);
+		LogOutResult *ret = (LogOutResult*)msgbuf;
+		std::cout << "æ”¶åˆ°å®¢æˆ·ç«¯æ¶ˆæ¯ï¼šCMD_LOGOUT_RESULTï¼šæ•°æ®é•¿åº¦" << ret->dataLength << std::endl;
+
+	}
+	break;
+	case CMD_NEW_USER_JOIN:
+	{
+		recv(_sock, msgbuf, dh.dataLength - sizeof(DataHeader), 0);
+		NewUser *ret = (NewUser*)msgbuf;
+		std::cout << "æ”¶åˆ°å®¢æˆ·ç«¯æ¶ˆæ¯ï¼šCMD_NEW_USER_JOINï¼šæ•°æ®é•¿åº¦" << ret->dataLength << std::endl;
+
+	}
+	break;
+	default:
+		std::cout << "default " << std::endl;
+	}
+	return 0;
 }
 void cmdThread(SOCKET _sock)
 {
@@ -125,7 +142,7 @@ void cmdThread(SOCKET _sock)
 	{
 		if (cmd == "exit")
 		{
-			std::cout << "Ïß³ÌÍË³ö" << std::endl;
+			std::cout << "çº¿ç¨‹é€€å‡º" << std::endl;
 			exit(1);
 		}
 		else if (cmd == "login")
@@ -145,61 +162,69 @@ void cmdThread(SOCKET _sock)
 		}
 		else
 		{
-			std::cout << "²»Ö§³ÖµÄÃüÁî" << std::endl;
+			std::cout << "ä¸æ”¯æŒçš„å‘½ä»¤" << std::endl;
 		}
 	}
 }
 
 int main()
 {
-	//Æô¶¯windows socket 2.x »·¾³
+	//å¯åŠ¨windows socket 2.x ç¯å¢ƒ
+#ifdef _WIN32
 	WORD ver = MAKEWORD(2, 2);
 	WSADATA dat;
 	WSAStartup(ver, &dat);
+#endif
+
 	///
 	char _cmdBuf[128]{ 0 };
 
-	//¡ª¡ª ÓÃ Socket API ½¨Á¢¼òÒ× TCP ¿Í»§
-	//	1. ½¨Á¢Ò»¸ösocket
+	//â€”â€” ç”¨ Socket API å»ºç«‹ç®€æ˜“ TCP å®¢æˆ·
+	//	1. å»ºç«‹ä¸€ä¸ªsocket
 	SOCKET _sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (INVALID_SOCKET == _sock)
 	{
-		std::cout << "´íÎó£¬Ì×½Ó×Ö½¨Á¢Ê§°Ü" << std::endl;
+		std::cout << "é”™è¯¯ï¼Œå¥—æ¥å­—å»ºç«‹å¤±è´¥" << std::endl;
 		exit(1);
 	}
 	else
 	{
-		std::cout << "½¨Á¢socket³É¹¦" << std::endl;
+		std::cout << "å»ºç«‹socketæˆåŠŸ" << std::endl;
 	}
-	//	2. Á¬½Ó·şÎñÆ÷ ¡ª¡ªconnect
+	//	2. è¿æ¥æœåŠ¡å™¨ â€”â€”connect
 	sockaddr_in _sin{};
-	char recvBuf[256]{0};
+	char recvBuf[256]{ 0 };
 	_sin.sin_family = AF_INET;
 	_sin.sin_port = htons(8888);
+#ifdef _WIN32
 	_sin.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+#else
+	_sin.sin_addr.s_addr = inet_addr("192.168.6.89");
+#endif
+
 	int ret = connect(_sock, (sockaddr*)&_sin, sizeof(_sin));
 	if (SOCKET_ERROR == ret)
 	{
-		std::cout << "´íÎó£¬Á¬½ÓSocketÊ§°Ü" << std::endl;
+		std::cout << "é”™è¯¯ï¼Œè¿æ¥Socketå¤±è´¥" << std::endl;
 	}
 	else
 	{
-		std::cout << "Á¬½Ó·şÎñÆ÷³É¹¦" << std::endl;
+		std::cout << "è¿æ¥æœåŠ¡å™¨æˆåŠŸ" << std::endl;
 	}
-	FD_SET fdreads;
-	//Æô¶¯Ïß³Ì
-	std::thread td(cmdThread,_sock);
+	fd_set fdreads;
+	//å¯åŠ¨çº¿ç¨‹
+	std::thread td(cmdThread, _sock);
 	td.detach();
 	while (!g_bExit)
 	{
 		FD_ZERO(&fdreads);
 		FD_SET(_sock, &fdreads);
 		timeval t{ 1,0 };
-		int ret = select(_sock,&fdreads,nullptr,nullptr,&t);
+		int ret = select(_sock, &fdreads, nullptr, nullptr, &t);
 
 		if (ret < 0)
 		{
-			std::cout << "selectÈÎÎñ½áÊø" << std::endl;
+			std::cout << "selectä»»åŠ¡ç»“æŸ" << std::endl;
 			break;
 		}
 		if (FD_ISSET(_sock, &fdreads))
@@ -208,17 +233,25 @@ int main()
 
 			if (-1 == processor(_sock))
 			{
-				std::cout << "selectÈÎÎñ½áÊø" << std::endl;
+				std::cout << "selectä»»åŠ¡ç»“æŸ" << std::endl;
 				break;
 			}
 		}
 	}
 
-	//	7 ¹Ø±Õsocket ¡ª¡ªclosesocket
+	//	7 å…³é—­socket â€”â€”closesocket
+#ifdef _WIN32
 	closesocket(_sock);
+#else
+	close(_sock);
+#endif
+
 	///
 
-	//Çå³ı Windows socket »·¾³
+	//æ¸…é™¤ Windows socket ç¯å¢ƒ
+#ifdef _WIN32
 	WSACleanup();
+#endif
+
 	return 0;
 }
