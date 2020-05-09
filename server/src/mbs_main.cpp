@@ -11,10 +11,45 @@
 
 #include "mbs_global.h"
 
-struct PackageData
+//消息类型
+enum CMD
 {
-    int age;
-    char name[32];
+    CMD_LOGIN,
+    CMD_LOGOUT,
+    CMD_ERROR
+};
+
+
+//包头
+struct PackageHeader
+{
+    short len;  //数据长度
+    short cmd;  //消息类型
+};
+
+//登陆模拟，作为包体使用
+struct login
+{
+    char username[32];//用户名
+    char password[32];//密码
+};
+
+//登录结果
+struct loginret
+{
+    int result;
+};
+
+//登出模拟
+struct logout
+{
+    char username[32];  //用户名
+};
+
+//登出结果
+struct logoutret
+{
+    int result;
 };
 
 
@@ -88,33 +123,60 @@ int main(int argc,char **argv)
         std::cout << "新客户端加入:socket = " << acceptfd << " Ip = " << dest << std::endl;
     }
 
-    char recvbuff[128] = { 0 };
     while(true)
     {
+        PackageHeader header = {0};
         //5 接受客户端请求数据
-        int nlen = recv(acceptfd,recvbuff,128,0);
+        int nlen = recv(acceptfd,(char*)&header,sizeof(PackageHeader),0);
         if(nlen <= 0)
         {
-            std::cout << "客户端已退出,任务结束" << std::endl;
+            std::cout << "客户端已退出" << std::endl;
             break;
         }
-        std::cout << "读取到客户端请求：" << recvbuff << std::endl;
+        std::cout << "读取到客户端数据长度：" << header.len << " 命令：" << header.cmd << std::endl;
         //6 处理客户端请求
-        if (0 == strcmp(recvbuff,"info"))
+        switch(header.cmd)
         {
-            //7.1 发送数据到客户端
-            PackageData pd = {80,"小强"};
-            send(acceptfd,(const char*)&pd,sizeof(PackageData),0);
-        }
-        else
-        {
-            //7.2 发送数据到客户端
-            const char *msgbuf = "???";
-            send(acceptfd,msgbuf,strlen(msgbuf) + 1,0);
+            case CMD_LOGIN:
+                {
+                    login lin = { 0 };
+                    nlen = recv(acceptfd,(char*)&lin,sizeof(login),0);
+                    if(nlen < 0)
+                    {
+                        perror("recv");
+                        break;
+                    }
+                    std::cout << "登录信息：\n\t用户名：" << lin.username << "\n\t密码：" << lin.password << std::endl; 
+                    //忽略判断用户名密码是否正确
+                    loginret lr = { 200 };
+                    //7.1 发送数据到客户端
+                    send(acceptfd,(char *)&header,sizeof(PackageHeader),0);
+                    send(acceptfd,(char*)&lr,sizeof(loginret),0);
+                }
+                break;
+            case CMD_LOGOUT:
+                {
+                    logout lo = {0};
+                    recv(acceptfd,(char *)&lo,sizeof(logout),0);
+                    std::cout << "\t" << lo.username << " 登出" << std::endl;
+                    logoutret lr = { 202 };
+                    //7.2 发送数据到客户端
+                    send(acceptfd,(char *)&header,sizeof(PackageHeader),0);
+                    send(acceptfd,(char*)&lr,sizeof(logoutret),0);
+                }
+                break;
+            default:
+                {
+                    header.cmd = CMD_ERROR;
+                    header.len = 0;
+                    send(acceptfd,(char*)&header,sizeof(PackageHeader),0);
+                }
+                break;
         }
     }
     //8 关闭链接套接字
     close(acceptfd);
+    std::cout << "任务结束" << std::endl;
     //9 关闭套接字
     close(sockfd);
     return 0;
