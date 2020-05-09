@@ -11,6 +11,13 @@
 
 #include "mbs_global.h"
 
+struct PackageData
+{
+    int age;
+    char name[32];
+};
+
+
 int main(int argc,char **argv)
 {
     struct sockaddr_in server,client;
@@ -93,21 +100,15 @@ int main(int argc,char **argv)
         }
         std::cout << "读取到客户端请求：" << recvbuff << std::endl;
         //6 处理客户端请求
-        if (0 == strcmp(recvbuff,"name"))
+        if (0 == strcmp(recvbuff,"info"))
         {
             //7.1 发送数据到客户端
-            const char *msgbuf = "小强";
-            send(acceptfd,msgbuf,strlen(msgbuf) + 1,0);
-        }
-        else if (0 == strcmp(recvbuff,"age"))
-        {
-            //7.2 发送数据到客户端
-            const char *msgbuf = "80";
-            send(acceptfd,msgbuf,strlen(msgbuf) + 1,0);
+            PackageData pd = {80,"小强"};
+            send(acceptfd,(const char*)&pd,sizeof(PackageData),0);
         }
         else
         {
-            //7.3 发送数据到客户端
+            //7.2 发送数据到客户端
             const char *msgbuf = "???";
             send(acceptfd,msgbuf,strlen(msgbuf) + 1,0);
         }
