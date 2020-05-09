@@ -11,6 +11,12 @@
 
 #include "mbs_global.h"
 
+struct PackageData
+{
+    int age;
+    char name[32];
+};
+
 int main(int argc,char **argv)
 {
     struct sockaddr_in server;
@@ -70,7 +76,8 @@ int main(int argc,char **argv)
             perror("recv");
             exit(-1);
         }
-        std::cout << "读取到服务器数据:" << recvbuff << std::endl;
+        PackageData *pd = (PackageData*)&recvbuff;
+        std::cout << "读取到服务器数据:名字：" << pd->name << " 年龄：" << pd->age << std::endl;
     }
 
 
