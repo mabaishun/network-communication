@@ -16,7 +16,9 @@
 enum CMD
 {
     CMD_LOGIN,
+    CMD_LOGIN_RET,
     CMD_LOGOUT,
+    CMD_LOGOUT_RET,
     CMD_ERROR
 };
 
@@ -29,27 +31,49 @@ struct PackageHeader
 };
 
 //登陆模拟，作为包体使用
-struct login
+struct login:public PackageHeader
 {
+    login()
+    {
+        len = sizeof(login);
+        cmd = CMD_LOGIN;
+    }
     char username[32];//用户名
     char password[32];//密码
 };
 
 //登录结果
-struct loginret
+struct loginret:public PackageHeader
 {
+    loginret()
+    {
+        len = sizeof(loginret);
+        cmd = CMD_LOGIN_RET;
+        result = 200;
+    }
     int result;
 };
 
 //登出模拟
-struct logout
+struct logout:public PackageHeader
 {
+    logout()
+    {
+        len = sizeof(logout);
+        cmd = CMD_LOGOUT;
+    }
     char username[32];  //用户名
 };
 
 //登出结果
-struct logoutret
+struct logoutret:public PackageHeader
 {
+    logoutret()
+    {
+        len = sizeof(logoutret);
+        cmd = CMD_LOGOUT_RET;
+        result = 202;
+    }
     int result;
 };
 
@@ -96,35 +120,26 @@ int main(int argc,char **argv)
         }
         else if( 0 == strcmp(cmdbuff,"login") )
         {
-            login ln = {"admin","password"};
-            PackageHeader ph;
-            ph.cmd = CMD_LOGIN;
-            ph.len = sizeof(login);
+            login ln;
+            strcpy(ln.username,"admin");
+            strcpy(ln.password,"password");
             //向服务器发送请求指令
-            send(sockfd,(char*)&ph,sizeof(PackageHeader),0);
             send(sockfd,(char*)&ln,sizeof(login),0);
 
             //接受服务器返回结果
-            PackageHeader phr = {0};
-            loginret lnr = {0};
-            recv(sockfd,(char*)&phr,sizeof(PackageHeader),0);
+            loginret lnr;
             recv(sockfd,(char*)&lnr,sizeof(loginret),0);
             std::cout << "\t登录结果:" << lnr.result << std::endl; 
         }
         else if( 0 == strcmp(cmdbuff,"logout") )
         {
-            logout lo = { "admin" };
-            PackageHeader ph;
-            ph.cmd = CMD_LOGOUT;
-            ph.len = sizeof(logout);
+            logout lo;
+            strcpy(lo.username,"admin");
             //向服务器发送请求指令
-            send(sockfd,(char*)&ph,sizeof(PackageHeader),0);
             send(sockfd,(char*)&lo,sizeof(logout),0);
 
             //接受服务器返回结果
-            PackageHeader phr = {0};
-            logoutret lor = {0};
-            recv(sockfd,(char*)&phr,sizeof(PackageHeader),0);
+            logoutret lor;
             recv(sockfd,(char*)&lor,sizeof(logoutret),0);
             std::cout << "\t登出结果:" << lor.result << std::endl; 
         }
