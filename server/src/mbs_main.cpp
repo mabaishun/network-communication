@@ -15,7 +15,9 @@
 enum CMD
 {
     CMD_LOGIN,
+    CMD_LOGIN_RET,
     CMD_LOGOUT,
+    CMD_LOGOUT_RET,
     CMD_ERROR
 };
 
@@ -28,29 +30,82 @@ struct PackageHeader
 };
 
 //登陆模拟，作为包体使用
-struct login
+struct login:public PackageHeader
 {
+    login()
+    {
+        len = sizeof(login);
+        cmd = CMD_LOGIN;
+    }
     char username[32];//用户名
     char password[32];//密码
 };
 
 //登录结果
-struct loginret
+struct loginret:public PackageHeader
 {
+    loginret()
+    {
+        len = sizeof(loginret);
+        cmd = CMD_LOGIN_RET;
+        result = 200;
+    }
     int result;
 };
 
 //登出模拟
-struct logout
+struct logout:public PackageHeader
 {
+    logout()
+    {
+        len = sizeof(logout);
+        cmd = CMD_LOGOUT;
+    }
     char username[32];  //用户名
 };
 
 //登出结果
-struct logoutret
+struct logoutret:public PackageHeader
 {
+    logoutret()
+    {
+        len = sizeof(logoutret);
+        cmd = CMD_LOGOUT_RET;
+        result = 202;
+    }
     int result;
 };
+
+
+
+//指令输出
+std::string print(int cmd)
+{
+    std::string str;
+    switch(cmd)
+    {
+        case CMD_LOGIN:
+            str = "CMD_LOGIN";
+            break;
+        case CMD_LOGIN_RET:
+            str = "CMD_LOGIN_RET";
+            break;
+        case CMD_LOGOUT:
+            str = "CMD_LOGOUT";
+            break;
+        case CMD_LOGOUT_RET:
+            str = "CMD_LOGOUT_RET";
+            break;
+        case CMD_ERROR:
+            str = "CMD_ERROR";
+            break;
+        default:
+            str = "";
+            break;
+    }
+    return str;
+}
+
 
 
 int main(int argc,char **argv)
@@ -133,14 +188,14 @@ int main(int argc,char **argv)
             std::cout << "客户端已退出" << std::endl;
             break;
         }
-        std::cout << "读取到客户端数据长度：" << header.len << " 命令：" << header.cmd << std::endl;
+        std::cout << "读取到客户端数据长度：" << header.len << " 命令：" << print(header.cmd)<< std::endl;
         //6 处理客户端请求
         switch(header.cmd)
         {
             case CMD_LOGIN:
                 {
-                    login lin = { 0 };
-                    nlen = recv(acceptfd,(char*)&lin,sizeof(login),0);
+                    login lin = {};
+                    nlen = recv(acceptfd,(char*)&lin + sizeof(PackageHeader),sizeof(login) - sizeof(PackageHeader),0);
                     if(nlen < 0)
                     {
                         perror("recv");
@@ -148,20 +203,20 @@ int main(int argc,char **argv)
                     }
                     std::cout << "登录信息：\n\t用户名：" << lin.username << "\n\t密码：" << lin.password << std::endl; 
                     //忽略判断用户名密码是否正确
-                    loginret lr = { 200 };
+                    loginret lr = {};
+                    lr.result = 200;
                     //7.1 发送数据到客户端
-                    send(acceptfd,(char *)&header,sizeof(PackageHeader),0);
                     send(acceptfd,(char*)&lr,sizeof(loginret),0);
                 }
                 break;
             case CMD_LOGOUT:
                 {
-                    logout lo = {0};
-                    recv(acceptfd,(char *)&lo,sizeof(logout),0);
+                    logout lo = {};
+                    recv(acceptfd,(char *)&lo + sizeof(PackageHeader),sizeof(logout) - sizeof(PackageHeader),0);
                     std::cout << "\t" << lo.username << " 登出" << std::endl;
-                    logoutret lr = { 202 };
+                    logoutret lr = {};
+                    lr.result = 202;
                     //7.2 发送数据到客户端
-                    send(acceptfd,(char *)&header,sizeof(PackageHeader),0);
                     send(acceptfd,(char*)&lr,sizeof(logoutret),0);
                 }
                 break;
