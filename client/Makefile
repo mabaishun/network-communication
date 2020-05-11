@@ -16,7 +16,7 @@
 CXX := g++
 CXXFLAGS := -Wall -g -std=c++11
 INCLUDES := -Iinclude
-LIBS := 
+LIBS :=  -lpthread
 TARGET := bin/client
 
 SRCDIR := src

@@ -10,72 +10,162 @@
 *****************************************************************/
 
 #include "mbs_global.h"
+#include <thread>
 
+#include "mbs_processor.h"
 
-//消息类型
-enum CMD
+void cmdThread(Processor *p)
 {
-    CMD_LOGIN,
-    CMD_LOGIN_RET,
-    CMD_LOGOUT,
-    CMD_LOGOUT_RET,
-    CMD_ERROR
-};
-
-
-//包头
-struct PackageHeader
-{
-    short len;  //数据长度
-    short cmd;  //消息类型
-};
-
-//登陆模拟，作为包体使用
-struct login:public PackageHeader
-{
-    login()
+    char buffer[128] = {0};
+    while(true)
     {
-        len = sizeof(login);
-        cmd = CMD_LOGIN;
+        fgets(buffer,128,stdin);
+        buffer[strlen(buffer) - 1] = '\0';
+        if(strcmp(buffer,"exit") == 0)
+        {
+            std::cout << "退出" << std::endl;
+            exit(1);
+        }
+        else if(strcmp(buffer,"login") == 0)
+        {
+            login lo;
+            strcpy(lo.username,"admin");
+            strcpy(lo.password,"password");
+            p->sendmessage(&lo);
+        }
+        else if(strcmp(buffer,"logout") == 0)
+        {
+            logout lo;
+            strcpy(lo.username,"admin");
+            p->sendmessage(&lo);
+        }
+        else 
+        {
+            std::cout << "不能识别的请求" << std::endl;
+        }
     }
-    char username[32];//用户名
-    char password[32];//密码
-};
+}
 
-//登录结果
-struct loginret:public PackageHeader
-{
-    loginret()
-    {
-        len = sizeof(loginret);
-        cmd = CMD_LOGIN_RET;
-        result = 200;
-    }
-    int result;
-};
 
-//登出模拟
-struct logout:public PackageHeader
+int main(void)
 {
-    logout()
-    {
-        len = sizeof(logout);
-        cmd = CMD_LOGOUT;
-    }
-    char username[32];  //用户名
-};
+    Processor p1;
+    Processor p2;
+    p1.clientsocket();
+    p2.clientsocket();
+    p1.connection();
+    p2.connection();
+    //std::thread t1(cmdThread,&p1);
+    //std::thread t2(cmdThread,&p2);
+    //t1.detach();
+    //t2.detach();
 
-//登出结果
-struct logoutret:public PackageHeader
-{
-    logoutret()
+    login lo;
+    strcpy(lo.username,"admin");
+    strcpy(lo.password,"password");
+
+
+    while(p1.isrun())
     {
-        len = sizeof(logoutret);
-        cmd = CMD_LOGOUT_RET;
-        result = 202;
+        p1.run();
+        p2.run();
+        p1.sendmessage(&lo);
+        p2.sendmessage(&lo);
     }
-    int result;
-};
+   
+    p1.closes();
+    p2.closes();
+    return 0;
+}
+
+
+#if 0
+
+
+//指令输出
+std::string print(int cmd)
+{
+    std::string str;
+    switch(cmd)
+    {
+        case CMD_LOGIN:
+            str = "CMD_LOGIN";
+            break;
+        case CMD_LOGIN_RET:
+            str = "CMD_LOGIN_RET";
+            break;
+        case CMD_LOGOUT:
+            str = "CMD_LOGOUT";
+            break;
+        case CMD_LOGOUT_RET:
+            str = "CMD_LOGOUT_RET";
+            break;
+        case CMD_ERROR:
+            str = "CMD_ERROR";
+            break;
+        default:
+            str = "";
+            break;
+    }
+    return str;
+}
+int process(int acceptfd)
+{
+    PackageHeader header = {0};
+    //5 接受客户端请求数据
+    int nlen = recv(acceptfd,(char*)&header,sizeof(PackageHeader),0);
+    if(nlen <= 0)
+    {
+        std::cout << "与服务器断开链接:" << nlen << std::endl;
+        return -1;
+    }
+    std::cout << "读取到客户端数据长度：" << header.len << " 命令：" << print(header.cmd)<< std::endl;
+    //6 处理客户端请求
+    switch(header.cmd)
+    {
+        case CMD_LOGIN_RET:
+            {
+                loginret lin = {};
+                nlen = recv(acceptfd,(char*)&lin + sizeof(PackageHeader),sizeof(loginret) - sizeof(PackageHeader),0);
+                if(nlen < 0)
+                {
+                    perror("recv");
+                    break;
+                }
+                std::cout << "\t登录结果:" << lin.result << std::endl; 
+                //忽略判断用户名密码是否正确
+            }
+            break;
+        case CMD_LOGOUT_RET:
+            {
+                logoutret lo = {};
+                recv(acceptfd,(char *)&lo + sizeof(PackageHeader),sizeof(logoutret) - sizeof(PackageHeader),0);
+                std::cout << "\t登出结果：" << lo.result << std::endl;
+            }
+            break;
+        case CMD_NEW_USER:
+            {
+                newuser nu = {};
+                recv(acceptfd,(char *)&nu + sizeof(PackageHeader),sizeof(newuser) - sizeof(PackageHeader),0);
+                std::cout << nu.sock << "登录" << std::endl;
+            }
+            break;
+        default:
+            {
+                header.cmd = CMD_ERROR;
+                header.len = 0;
+                send(acceptfd,(char*)&header,sizeof(PackageHeader),0);
+            }
+            break;
+    }
+    return -1;
+}
+
+
+
+
+
+
 
 
 int main(int argc,char **argv)
@@ -104,48 +194,38 @@ int main(int argc,char **argv)
         exit(-1);
     }
 
-    char cmdbuff[128] = {0};
+    std::thread th(cmdThread,sockfd);
+    th.detach();
+
     while(true)
     {
-        std::cout << "请输入命令：";
-        //3. 输入请求命令
-        //从终端读取数据
-        fgets(cmdbuff,128,stdin);
-        cmdbuff[strlen(cmdbuff) - 1] = '\0';
-        std::cout << "\t从终端读取数据:" << cmdbuff << std::endl;
-        //4 处理请求
-        if( 0 == strcmp(cmdbuff,"exit") )
+        fd_set rdfd;
+        
+        FD_ZERO(&rdfd);
+
+        FD_SET(sockfd,&rdfd);
+        timeval t = {1,0};
+        ret = select(sockfd + 1,&rdfd,nullptr,nullptr,&t);
+        if(ret < 0)
         {
+            std::cout << "select错误" << std::endl;
             break;
         }
-        else if( 0 == strcmp(cmdbuff,"login") )
+        if(ret == 0)
         {
-            login ln;
-            strcpy(ln.username,"admin");
-            strcpy(ln.password,"password");
-            //向服务器发送请求指令
-            send(sockfd,(char*)&ln,sizeof(login),0);
-
-            //接受服务器返回结果
-            loginret lnr;
-            recv(sockfd,(char*)&lnr,sizeof(loginret),0);
-            std::cout << "\t登录结果:" << lnr.result << std::endl; 
+            std::cout << "空闲处理" << std::endl;
+            std::cout << "select超时" << std::endl;
+            continue;
         }
-        else if( 0 == strcmp(cmdbuff,"logout") )
-        {
-            logout lo;
-            strcpy(lo.username,"admin");
-            //向服务器发送请求指令
-            send(sockfd,(char*)&lo,sizeof(logout),0);
 
-            //接受服务器返回结果
-            logoutret lor;
-            recv(sockfd,(char*)&lor,sizeof(logoutret),0);
-            std::cout << "\t登出结果:" << lor.result << std::endl; 
-        }
-        else
+        if(FD_ISSET(sockfd,&rdfd))
         {
-            std::cout << "不支持的命令,请重新输入" << std::endl;
+            FD_SET(sockfd,&rdfd);
+            if(process(sockfd) == -1)
+            {
+                std::cout << "select任务结束" << std::endl;
+                break;
+            }
         }
 
     }
@@ -155,3 +235,4 @@ int main(int argc,char **argv)
     std::cout << "任务结束" << std::endl;
     return 0;
 }
+#endif 
