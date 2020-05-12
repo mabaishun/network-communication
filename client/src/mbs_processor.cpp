@@ -67,8 +67,9 @@ int Processor::recvdata(int sockfd)
         std::cout << "与服务器断开链接" << std::endl;
         return -1;
     }
+    //std::cout << "len = [ " << len << " ]" << std::endl;
     PackageHeader *ph = (PackageHeader*)buffer;
-    std::cout << "读取到客户端数据长度：" << ph->len << " 命令：" << print(ph->cmd)<< std::endl;
+    std::cout << "读取到服务器数据长度：" << ph->len << " 命令：" << print(ph->cmd)<< std::endl;
     len = recv(sockfd,buffer + sizeof(PackageHeader),ph->len - sizeof(PackageHeader),0);
     if(len <= 0)
     {
