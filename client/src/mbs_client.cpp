@@ -11,6 +11,8 @@
 
 #include "mbs_client.h"
 
+static int count = 0;
+
 Client::Client()
 {
 
@@ -36,6 +38,7 @@ bool Client::run()
             closes();
             return false;
         }
+        std::cout << "select = [ " << ret << " ] count [ " << count++ << " ]" << std::endl;
         if(FD_ISSET(sockfd,&fdread))
         {
             FD_CLR(sockfd,&fdread);
