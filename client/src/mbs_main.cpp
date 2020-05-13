@@ -14,7 +14,9 @@
 
 #include "mbs_processor.h"
 
-void cmdThread(Processor *p)
+bool IsRun = true;
+
+void cmdThread()
 {
     char buffer[128] = {0};
     while(true)
@@ -23,6 +25,7 @@ void cmdThread(Processor *p)
         buffer[strlen(buffer) - 1] = '\0';
         if(strcmp(buffer,"exit") == 0)
         {
+            IsRun = false;
             std::cout << "退出" << std::endl;
             exit(1);
         }
@@ -31,13 +34,13 @@ void cmdThread(Processor *p)
             login lo;
             strcpy(lo.username,"admin");
             strcpy(lo.password,"password");
-            p->sendmessage(&lo);
+            //p->sendmessage(&lo);
         }
         else if(strcmp(buffer,"logout") == 0)
         {
             logout lo;
             strcpy(lo.username,"admin");
-            p->sendmessage(&lo);
+            //p->sendmessage(&lo);
         }
         else 
         {
@@ -49,32 +52,36 @@ void cmdThread(Processor *p)
 
 int main(void)
 {
-    Processor p1;
-    Processor p2;
-    p1.clientsocket();
-    p2.clientsocket();
-    p1.connection();
-    p2.connection();
-    //std::thread t1(cmdThread,&p1);
-    //std::thread t2(cmdThread,&p2);
-    //t1.detach();
-    //t2.detach();
+    const int count = 100;
+    Processor *p[count];
+    for(int i = 0;i < count;i++)
+    {
+        p[i] = new Processor();
+        p[i]->clientsocket();
+        p[i]->connection();
+    }
+    std::thread t1(cmdThread);
+    t1.detach();
 
     login lo;
     strcpy(lo.username,"admin");
     strcpy(lo.password,"password");
 
 
-    while(p1.isrun())
+    while(IsRun)
     {
-        p1.run();
-        p2.run();
-        p1.sendmessage(&lo);
-        p2.sendmessage(&lo);
+        //p1.run();
+        for (int i = 0;i < count;i++)
+        {
+            p[i]->sendmessage(&lo);
+        }
+        //p1.sendmessage(&lo);
     }
    
-    p1.closes();
-    p2.closes();
+    for(int i = 0 ;i < count;i++)
+    {
+        p[i]->closes();
+    }
     return 0;
 }
 

@@ -11,11 +11,41 @@
 
 #include "mbs_global.h"
 #include "mbs_tcp_server.h"
+#include <thread>
+
+bool IsRun = true;
+
+void cmdThread()
+{
+    while(true)
+    {
+        char cmd[128];
+        fgets(cmd,128,stdin);
+        cmd[strlen(cmd) - 1] = '\0';
+        if(strcmp(cmd,"exit") == 0)
+        {
+            IsRun = false;
+            printf("线程退出\n");
+            exit(1);
+        }
+        else
+        {
+            std::cout << "不支持的命令" << std::endl;
+        }
+    }
+}
+
+
+
 
 int main(int argc,char **argv)
 {
     TcpServer server(nullptr,PORT);
-    while(server.isrun())
+
+    std::thread t(cmdThread);
+    t.detach();
+
+    while(IsRun)
     {
         server.run();
     }

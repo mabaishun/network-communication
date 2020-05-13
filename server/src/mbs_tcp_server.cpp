@@ -67,15 +67,14 @@ bool TcpServer::run()
         }
         if(ret == 0)
         {
-            std::cout << PRINTINFO << "select 任务超时" << std::endl;
+            //std::cout << PRINTINFO << "select 任务超时" << std::endl;
             continue;
         }
-        std::cout << "select ret = [ " << ret << " ] count [ " << count++ << " ]" << std::endl;
+        //std::cout << "select ret = [ " << ret << " ] count [ " << count++ << " ]" << std::endl;
         if(FD_ISSET(listenfd,&fdr))
         {
             FD_CLR(listenfd,&fdr);
             int connfd = accept();
-            std::cout << "connfd:" << connfd << std::endl;
             if(connfd != -1)
             {
                 fd.push_back(new TcpConnection(connfd));

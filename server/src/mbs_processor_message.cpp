@@ -98,27 +98,28 @@ void ProcessMessage::netmessage(PackageHeader *ph)
                 login *lin = (login*)ph;
                 //std::cout << "登录信息：\n\t用户名：" << lin->username << "\n\t密码：" << lin->password << std::endl; 
                 //忽略判断用户名密码是否正确
-                loginret lr = {};
-                lr.result = 200;
+                //loginret lr = {};
+                //lr.result = 200;
                 //7.1 发送数据到客户端
-                send(conn->getsock(),(char*)&lr,sizeof(loginret),0);
+                //send(conn->getsock(),(char*)&lr,sizeof(loginret),0);
             }
             break;
         case CMD_LOGOUT:
             {
                 logout *lo = (logout*)ph;
                 //std::cout << "\t" << lo->username << " 登出" << std::endl;
-                logoutret lr = {};
-                lr.result = 202;
+                //logoutret lr = {};
+                //lr.result = 202;
                 //7.2 发送数据到客户端
-                send(conn->getsock(),(char*)&lr,sizeof(logoutret),0);
+                //send(conn->getsock(),(char*)&lr,sizeof(logoutret),0);
             }
             break;
         default:
             {
+                std::cout << "收到为定义消息" << std::endl;
                 ph->cmd = CMD_ERROR;
                 ph->len = 0;
-                send(conn->getsock(),(char*)ph,sizeof(PackageHeader),0);
+                //send(conn->getsock(),(char*)ph,sizeof(PackageHeader),0);
             }
             break;
     }

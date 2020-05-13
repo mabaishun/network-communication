@@ -149,7 +149,6 @@ int TcpBase::accept()
 	//获取客户端地址结构长度
 	socklen_t len = sizeof(cliaddr);
 	
-    std::cout << "等待客户端连接到来..." << std::endl;
 	//等待连接到来
     while(true)
     {
