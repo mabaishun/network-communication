@@ -13,6 +13,8 @@
 #include "mbs_tcp_server.h"
 #include "mbs_processor_message.h"
 
+static int count = 0;
+
 TcpServer::TcpServer(const char * host,const uint16_t port)
 {
     if(listen(host,port) < 0)
@@ -49,10 +51,10 @@ bool TcpServer::run()
         int maxsock = listenfd;
         for(int i = 0;i < (int)fd.size();i++)
         {
-            FD_SET(fd[i],&fdr);
-            if(fd[i] > maxsock)
+            FD_SET(fd[i]->getsock(),&fdr);
+            if(fd[i]->getsock() > maxsock)
             {
-                maxsock = fd[i];
+                maxsock = fd[i]->getsock();
             }
         }
 
@@ -68,6 +70,7 @@ bool TcpServer::run()
             std::cout << PRINTINFO << "select 任务超时" << std::endl;
             continue;
         }
+        std::cout << "select ret = [ " << ret << " ] count [ " << count++ << " ]" << std::endl;
         if(FD_ISSET(listenfd,&fdr))
         {
             FD_CLR(listenfd,&fdr);
@@ -75,13 +78,10 @@ bool TcpServer::run()
             std::cout << "connfd:" << connfd << std::endl;
             if(connfd != -1)
             {
-                fd.push_back(connfd);
+                fd.push_back(new TcpConnection(connfd));
                 newuser nu;
                 nu.sock = connfd;
-                for(auto it = fd.begin();it != fd.end();it++)
-                {
-                    send(*it,(char*)&nu,sizeof(newuser),0);
-                }
+                sendall(&nu);
                 //TcpConnection conn(connfd);
                 //_pool->enqueue(&process,&conn);
                 //TcpConnection conn(connfd);
@@ -99,16 +99,17 @@ bool TcpServer::run()
         }
             for(int i = 0;i < (int)fd.size();i++)
             {
-                if(FD_ISSET(fd[i],&fdr))
+                if(FD_ISSET(fd[i]->getsock(),&fdr))
                 {
-                    std::cout << "开始处理业务" << std::endl;
+                    //std::cout << "开始处理业务" << std::endl;
                     ProcessMessage pm(fd[i]);
                     if(pm.process() == -1)
                     {
-                        close(fd[i]);
+                        close(fd[i]->getsock());
                         auto it = fd.begin() + i;
                         if(it != fd.end())
                         {
+                            delete fd[i];
                             fd.erase(it);
                         }
                     }
@@ -123,7 +124,14 @@ bool TcpServer::run()
 void TcpServer::Close()
 {
     if(listenfd != -1)
+    {
+        for(int i = 0;i < (int)fd.size();i++)
+        {
+            ::close(fd[i]->getsock());
+        }
         ::close(listenfd);
+    }
+    fd.clear();
 }
 
 bool TcpServer::isrun()
@@ -137,7 +145,7 @@ void TcpServer::sendall(PackageHeader *ph)
     {
         for(int i = 0;i < (int)fd.size();i++)
         {
-            int len = send(fd[i],(char*)ph,ph->len,0);
+            int len = send(fd[i]->getsock(),(char*)ph,ph->len,0);
             if(len <= 0)
             {
                 std::cout << "群发消息到 [" << fd[i] << "] 错误" << std::endl;
