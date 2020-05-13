@@ -16,6 +16,38 @@
 
 bool IsRun = true;
 
+void sendThread(int id)
+{
+    //客户端数量
+    const int count = 200;
+    Processor *p[count];
+    for(int i = 0;i < count;i++)
+    {
+        p[i] = new Processor();
+        p[i]->clientsocket();
+        p[i]->connection();
+    }
+
+    login lo;
+    strcpy(lo.username,"admin");
+    strcpy(lo.password,"password");
+
+
+    while(IsRun)
+    {
+        //p1.run();
+        for (int i = 0;i < count;i++)
+        {
+            p[i]->sendmessage(&lo);
+        }
+        //p1.sendmessage(&lo);
+    }
+   
+    for(int i = 0 ;i < count;i++)
+    {
+        p[i]->closes();
+    }
+}
 void cmdThread()
 {
     char buffer[128] = {0};
@@ -52,35 +84,22 @@ void cmdThread()
 
 int main(void)
 {
-    const int count = 500;
-    Processor *p[count];
-    for(int i = 0;i < count;i++)
+    //线程数量
+    const int threadcount = 4;
+
+    //启动发送线程
+    for(int i = 0; i< threadcount;i++)
     {
-        p[i] = new Processor();
-        p[i]->clientsocket();
-        p[i]->connection();
+        std::thread t(sendThread,i + 1);
+        t.detach();
     }
+
     std::thread t1(cmdThread);
     t1.detach();
 
-    login lo;
-    strcpy(lo.username,"admin");
-    strcpy(lo.password,"password");
-
-
     while(IsRun)
     {
-        //p1.run();
-        for (int i = 0;i < count;i++)
-        {
-            p[i]->sendmessage(&lo);
-        }
-        //p1.sendmessage(&lo);
-    }
-   
-    for(int i = 0 ;i < count;i++)
-    {
-        p[i]->closes();
+        sleep(100);
     }
     return 0;
 }
