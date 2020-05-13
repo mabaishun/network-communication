@@ -38,6 +38,10 @@
 #define PRINTINFO   \
      __FILE__ << ":" <<  __FUNCTION__<< ":" << __LINE__ << " ] "
 
+
+const int BUFFSIZE = 4096;
+
+
 //消息类型
 enum CMD
 {
@@ -53,6 +57,11 @@ enum CMD
 //包头
 struct PackageHeader
 {
+    PackageHeader()
+    {
+        len = sizeof(PackageHeader);
+        cmd = CMD_ERROR;
+    }
     short len;  //数据长度
     short cmd;  //消息类型
 };
@@ -67,6 +76,7 @@ struct login:public PackageHeader
     }
     char username[32];//用户名
     char password[32];//密码
+    char data[1024 - 68];
 };
 
 //登录结果
@@ -79,6 +89,8 @@ struct loginret:public PackageHeader
         result = 200;
     }
     int result;
+
+    char data[1024 - 8];
 };
 
 //登出模拟

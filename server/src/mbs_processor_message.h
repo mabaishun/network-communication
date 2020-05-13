@@ -12,11 +12,12 @@
 #pragma once
 
 #include "mbs_global.h"
+#include "mbs_tcp_connection.h"
 
 class ProcessMessage
 {
     public:
-        ProcessMessage(int sockfd);
+        ProcessMessage(TcpConnection *con);
         ~ProcessMessage();
         int process();
         //读取数据
@@ -26,6 +27,6 @@ class ProcessMessage
         //发送网络消息
         int senddata(PackageHeader *ph);
     private:
-        int fd;
-
+        TcpConnection *conn;
+        char tempbuff[BUFFSIZE];
 };

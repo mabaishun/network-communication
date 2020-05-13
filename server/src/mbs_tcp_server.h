@@ -11,6 +11,7 @@
 
 #pragma once
 #include "mbs_tcp_base.h"
+#include "mbs_tcp_connection.h"
 
 
 class TcpServer : public TcpBase
@@ -27,5 +28,5 @@ class TcpServer : public TcpBase
         //群发
         virtual void sendall(PackageHeader* ph);
     private:
-        std::vector<int> fd;
+        std::vector<TcpConnection*> fd;
 };

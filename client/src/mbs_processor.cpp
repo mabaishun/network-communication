@@ -59,24 +59,32 @@ int Processor::processor(int sockfd)
 
 int Processor::recvdata(int sockfd)
 {
-    //缓冲区
-    char buffer[4096] = {};
-    int len = recv(sockfd,buffer,sizeof(PackageHeader),0);
+    //接受客户端数据
+    int len = recv(sockfd,tempbuff,BUFFSIZE,0);
     if(len <= 0)
     {
-        std::cout << "与服务器断开链接" << std::endl;
+        std::cout << "客户端 socket = [" << sockfd << "] 任务结束" << std::endl;
         return -1;
     }
-    //std::cout << "len = [ " << len << " ]" << std::endl;
-    PackageHeader *ph = (PackageHeader*)buffer;
-    std::cout << "读取到服务器数据长度：" << ph->len << " 命令：" << print(ph->cmd)<< std::endl;
-    len = recv(sockfd,buffer + sizeof(PackageHeader),ph->len - sizeof(PackageHeader),0);
-    if(len <= 0)
+
+    memcpy(buffer + offset,tempbuff,len);
+
+    offset += len;
+
+    while(offset >= sizeof(PackageHeader))
     {
-        std::cout << "数据不完整" << std::endl;
-        return -1;
+        PackageHeader* ph = (PackageHeader*)buffer;
+        if(offset >= ph->len)
+        {
+            offset -= ph->len;
+            message(ph);    
+            memcpy(buffer,buffer + ph->len,offset);
+        }
+        else
+        {
+            break;
+        }
     }
-    message(ph);
     return 0;
 }
 
@@ -88,20 +96,25 @@ int Processor::message(PackageHeader* header)
         case CMD_LOGIN_RET:
             {
                 loginret *lin = (loginret*)header;
-                std::cout << "\t登录结果:" << lin->result << std::endl; 
+                //std::cout << "\t登录结果:" << lin->result << std::endl; 
                 //忽略判断用户名密码是否正确
             }
             break;
         case CMD_LOGOUT_RET:
             {
                 logoutret *lo = (logoutret*)header ;
-                std::cout << "\t登出结果：" << lo->result << std::endl;
+                //std::cout << "\t登出结果：" << lo->result << std::endl;
             }
             break;
         case CMD_NEW_USER:
             {
                 newuser * nu = (newuser*)header;
-                std::cout << "\tsocket = [" << nu->sock << "] 登录" << std::endl;
+                //std::cout << "\tsocket = [" << nu->sock << "] 登录" << std::endl;
+            }
+            break;
+        case CMD_ERROR:
+            {
+                std::cout << "\t消息错误" << std::endl;
             }
             break;
         default:

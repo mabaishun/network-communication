@@ -46,9 +46,9 @@ static std::string print(int cmd)
 
 
 
-ProcessMessage::ProcessMessage(int sockfd):fd(sockfd)
+ProcessMessage::ProcessMessage(TcpConnection *con):conn(con)
 {
-
+    bzero(tempbuff,sizeof(tempbuff));
 }
 
 ProcessMessage::~ProcessMessage()
@@ -56,24 +56,33 @@ ProcessMessage::~ProcessMessage()
 }
 int ProcessMessage::process()
 {
-    //缓冲区
-    char buffer[4096] = {};
     //接受客户端数据
-    int len = recv(fd,buffer,sizeof(PackageHeader),0);
+    int len = recv(conn->getsock(),tempbuff,BUFFSIZE,0);
     if(len <= 0)
     {
-        std::cout << "客户端 socket = [" << fd << "] 任务结束" << std::endl;
+        std::cout << "客户端 socket = [" << conn->getsock() << "] 任务结束" << std::endl;
         return -1;
     }
-    //std::cout << "len = [ " << len << " ]" << std::endl; 
-    PackageHeader *ph = (PackageHeader*)buffer;
-    std::cout << "读取到客户端数据长度：" << ph->len << " 命令：" << print(ph->cmd)<< std::endl;
-     len = recv(fd,buffer + sizeof(PackageHeader),ph->len - sizeof(PackageHeader),0);
-     if(len <= 0)
-     {
-         std::cout << "数据不完整" << std::endl;
-     }
-     netmessage(ph);
+
+    memcpy(conn->getbuff() + conn->getoffset(),tempbuff,len);
+
+    conn->setoffset(conn->getoffset() + len);
+
+    while(conn->getoffset() >= (int)sizeof(PackageHeader))
+    {
+        PackageHeader* ph = (PackageHeader*)conn->getbuff();
+        if(conn->getoffset() >= ph->len)
+        {
+            int size = conn->getoffset() - ph->len;
+            netmessage(ph);    
+            memcpy(conn->getbuff(),conn->getbuff() + ph->len,conn->getoffset());
+            conn->setoffset(size);
+        }
+        else
+        {
+            break;
+        }
+    }
     return 0;
 }
 int ProcessMessage::recvdata()
@@ -87,29 +96,30 @@ void ProcessMessage::netmessage(PackageHeader *ph)
         case CMD_LOGIN:
             {
                 login *lin = (login*)ph;
-                std::cout << "登录信息：\n\t用户名：" << lin->username << "\n\t密码：" << lin->password << std::endl; 
+                //std::cout << "登录信息：\n\t用户名：" << lin->username << "\n\t密码：" << lin->password << std::endl; 
                 //忽略判断用户名密码是否正确
-                loginret lr = {};
-                lr.result = 200;
+                //loginret lr = {};
+                //lr.result = 200;
                 //7.1 发送数据到客户端
-                send(fd,(char*)&lr,sizeof(loginret),0);
+                //send(conn->getsock(),(char*)&lr,sizeof(loginret),0);
             }
             break;
         case CMD_LOGOUT:
             {
                 logout *lo = (logout*)ph;
-                std::cout << "\t" << lo->username << " 登出" << std::endl;
-                logoutret lr = {};
-                lr.result = 202;
+                //std::cout << "\t" << lo->username << " 登出" << std::endl;
+                //logoutret lr = {};
+                //lr.result = 202;
                 //7.2 发送数据到客户端
-                send(fd,(char*)&lr,sizeof(logoutret),0);
+                //send(conn->getsock(),(char*)&lr,sizeof(logoutret),0);
             }
             break;
         default:
             {
+                std::cout << "收到为定义消息" << std::endl;
                 ph->cmd = CMD_ERROR;
                 ph->len = 0;
-                send(fd,(char*)ph,sizeof(PackageHeader),0);
+                //send(conn->getsock(),(char*)ph,sizeof(PackageHeader),0);
             }
             break;
     }
@@ -119,7 +129,7 @@ int ProcessMessage::senddata(PackageHeader *ph)
 {
     if(ph)
     {
-        return send(fd,(char *)ph,ph->len,0);
+        return send(conn->getsock(),(char *)ph,ph->len,0);
     }
     return -1;
 }

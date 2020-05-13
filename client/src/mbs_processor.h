@@ -26,5 +26,8 @@ class Processor:public Client
         //发送数据
         int sendmessage(PackageHeader *ph);
     private:
+        char buffer[BUFFSIZE * 10];
+        char tempbuff[BUFFSIZE];
+        int offset;
 
 };
