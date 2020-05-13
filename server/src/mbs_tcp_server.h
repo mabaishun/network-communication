@@ -12,6 +12,7 @@
 #pragma once
 #include "mbs_tcp_base.h"
 #include "mbs_tcp_connection.h"
+#include "mbs_time_stamp.h"
 
 
 class TcpServer : public TcpBase
@@ -29,4 +30,6 @@ class TcpServer : public TcpBase
         virtual void sendall(PackageHeader* ph);
     private:
         std::vector<TcpConnection*> fd;
+        TimeStamp time;
+        int count;
 };

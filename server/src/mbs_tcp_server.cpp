@@ -12,10 +12,10 @@
 #include <iostream>
 #include "mbs_tcp_server.h"
 #include "mbs_processor_message.h"
+#include <iomanip>
 
-static int count = 0;
 
-TcpServer::TcpServer(const char * host,const uint16_t port)
+TcpServer::TcpServer(const char * host,const uint16_t port):count(0)
 {
     if(listen(host,port) < 0)
     {
@@ -70,7 +70,6 @@ bool TcpServer::run()
             //std::cout << PRINTINFO << "select 任务超时" << std::endl;
             continue;
         }
-        //std::cout << "select ret = [ " << ret << " ] count [ " << count++ << " ]" << std::endl;
         if(FD_ISSET(listenfd,&fdr))
         {
             FD_CLR(listenfd,&fdr);
@@ -100,9 +99,28 @@ bool TcpServer::run()
             {
                 if(FD_ISSET(fd[i]->getsock(),&fdr))
                 {
+                    auto t = time.getElapseSecond();
+                    if(t >= 1.0)
+                    {
+                        std::cout << "time:[ " << std::fixed << std::setprecision(7) <<  t  << " ]  socket:[ ";
+                        std::cout.setf(std::ios::right);
+                        std::cout.width(4);
+                        std::cout.fill(' ');
+                        std::cout << fd[i]->getsock() << " ]  recv count:[ " ;
+                        std::cout.setf(std::ios::right);
+                        std::cout.width(8);
+                        std::cout.fill(' ');
+                        std::cout << count << " ]  client:[ ";
+                        std::cout.setf(std::ios::right);
+                        std::cout.width(4);
+                        std::cout.fill(' ');
+                        std::cout << fd.size() << " ]" << std::endl;
+                        time.update();
+                        count = 0;
+                    }
                     //std::cout << "开始处理业务" << std::endl;
                     ProcessMessage pm(fd[i]);
-                    if(pm.process() == -1)
+                    if(pm.process(count) == -1)
                     {
                         close(fd[i]->getsock());
                         auto it = fd.begin() + i;

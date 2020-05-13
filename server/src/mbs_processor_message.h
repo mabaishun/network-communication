@@ -19,7 +19,7 @@ class ProcessMessage
     public:
         ProcessMessage(TcpConnection *con);
         ~ProcessMessage();
-        int process();
+        int process(int &count);
         //读取数据
         int recvdata();
         //处理网络消息

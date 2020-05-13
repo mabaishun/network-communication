@@ -52,7 +52,7 @@ void cmdThread()
 
 int main(void)
 {
-    const int count = 100;
+    const int count = 500;
     Processor *p[count];
     for(int i = 0;i < count;i++)
     {

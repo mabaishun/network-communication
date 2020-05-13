@@ -54,7 +54,7 @@ ProcessMessage::ProcessMessage(TcpConnection *con):conn(con)
 ProcessMessage::~ProcessMessage()
 {
 }
-int ProcessMessage::process()
+int ProcessMessage::process(int &count)
 {
     //接受客户端数据
     int len = recv(conn->getsock(),tempbuff,BUFFSIZE,0);
@@ -74,6 +74,7 @@ int ProcessMessage::process()
         if(conn->getoffset() >= ph->len)
         {
             int size = conn->getoffset() - ph->len;
+            count++;
             netmessage(ph);    
             memcpy(conn->getbuff(),conn->getbuff() + ph->len,conn->getoffset());
             conn->setoffset(size);
